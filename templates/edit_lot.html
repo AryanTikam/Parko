@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Parking Lot - Parko{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-white mb-4">
+                <i class="fas fa-edit"></i> Edit Parking Lot
+            </h2>
+            <div class="card">
+                <div class="card-header">
+                    <h5>Update Parking Lot Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Location Name</label>
+                            <input type="text" class="form-control" id="name" name="name" value="{{ lot.prime_location_name }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="3" required>{{ lot.address }}</textarea>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="pin_code" class="form-label">Pin Code</label>
+                                <input type="text" class="form-control" id="pin_code" name="pin_code" value="{{ lot.pin_code }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="price" class="form-label">Price per Hour (₹)</label>
+                                <input type="number" class="form-control" id="price" name="price" value="{{ lot.price_per_hour }}" min="1" step="0.01" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="new_spots" class="form-label">Add New Spots</label>
+                            <input type="number" class="form-control" id="new_spots" name="new_spots" value="0" min="0">
+                            <small class="text-muted">Enter the number of new spots to add to the existing ones.</small>
+                        </div>
+
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">Manage Existing Parking Spots</h5>
+                        <p class="text-muted mb-3">Select spots you want to remove. Only unoccupied spots can be removed.</p>
+                        
+                        <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+                            {% for spot in lot.spots %}
+                            <div class="col">
+                                <div class="card h-100 {% if spot.status == 'O' %}bg-light{% endif %}">
+                                    <div class="card-body">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="spots_to_remove" value="{{ spot.id }}" id="spot{{ spot.id }}" {% if spot.status == 'O' %}disabled{% endif %}>
+                                            <label class="form-check-label" for="spot{{ spot.id }}">
+                                                <span class="fw-bold">Spot #{{ spot.spot_number }}</span>
+                                                <span class="badge {% if spot.status == 'A' %}bg-success{% else %}bg-danger{% endif %} ms-2">
+                                                    {{ spot.status == 'A' and 'Available' or 'Occupied' }}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

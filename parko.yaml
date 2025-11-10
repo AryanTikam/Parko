@@ -1,0 +1,367 @@
+openapi: 3.0.3
+info:
+  title: Vehicle Parking App API
+  description: RESTful API for managing parking lots, spots, and reservations
+  version: 1.0.0
+  contact:
+    name: Vehicle Parking App
+    email: support@parkingapp.com
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+
+paths:
+  /api/spot/{spot_id}:
+    get:
+      summary: Get parking spot details
+      description: Retrieve detailed information about a specific parking spot including current reservation status
+      parameters:
+        - name: spot_id
+          in: path
+          required: true
+          description: Unique identifier for the parking spot
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spot details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spot:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: Spot ID
+                      number:
+                        type: string
+                        description: Spot number/identifier
+                      status:
+                        type: string
+                        enum: [A, O]
+                        description: Spot status (A=Available, O=Occupied)
+                  lot:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        description: Parking lot name
+                      price_per_hour:
+                        type: number
+                        format: float
+                        description: Hourly parking rate
+                      address:
+                        type: string
+                        description: Parking lot address
+                  current_reservation:
+                    type: object
+                    nullable: true
+                    properties:
+                      vehicle_number:
+                        type: string
+                        description: Vehicle registration number
+                      user:
+                        type: string
+                        description: Username of the person who booked
+                      start_time:
+                        type: string
+                        format: date-time
+                        description: Parking start time in IST
+        '404':
+          description: Spot not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/reservation-details/{spot_id}:
+    get:
+      summary: Get reservation details for occupied spot (Admin only)
+      description: Retrieve comprehensive reservation details for a specific occupied parking spot
+      parameters:
+        - name: spot_id
+          in: path
+          required: true
+          description: Unique identifier for the parking spot
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reservation details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spot_id:
+                    type: integer
+                    description: Parking spot ID
+                  spot_number:
+                    type: string
+                    description: Spot identifier
+                  user_id:
+                    type: integer
+                    description: User ID who made the reservation
+                  username:
+                    type: string
+                    description: Username of the person who booked
+                  user_full_name:
+                    type: string
+                    description: Full name of the user
+                  vehicle_number:
+                    type: string
+                    description: Vehicle registration number
+                  parking_time:
+                    type: string
+                    format: date-time
+                    description: Parking start time in IST
+                  cost_per_hour:
+                    type: number
+                    format: float
+                    description: Hourly parking rate
+                  current_cost:
+                    type: number
+                    format: float
+                    description: Current cost based on elapsed time
+                  elapsed_time:
+                    type: string
+                    description: Human-readable elapsed time
+                  reservation_id:
+                    type: integer
+                    description: Reservation ID
+        '401':
+          description: Unauthorized - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No active reservation found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /book_spot/{spot_id}:
+    post:
+      summary: Book a specific parking spot
+      description: Reserve a specific parking spot for a vehicle
+      parameters:
+        - name: spot_id
+          in: path
+          required: true
+          description: Unique identifier for the parking spot
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vehicle_number:
+                  type: string
+                  description: Vehicle registration number
+                  example: "MH01AB1234"
+              required:
+                - vehicle_number
+      responses:
+        '200':
+          description: Spot booked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Success status
+                  message:
+                    type: string
+                    description: Success message
+                  reservation_id:
+                    type: integer
+                    description: ID of the created reservation
+        '400':
+          description: Bad request - Spot occupied or invalid data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - User login required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /book_lot/{lot_id}:
+    post:
+      summary: Book first available spot in a parking lot
+      description: Automatically allocate the first available parking spot in a lot
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          description: Unique identifier for the parking lot
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                vehicle_number:
+                  type: string
+                  description: Vehicle registration number
+                  example: "MH01AB1234"
+              required:
+                - vehicle_number
+      responses:
+        '200':
+          description: Spot booked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Success status
+                  message:
+                    type: string
+                    description: Success message with spot number
+                  reservation_id:
+                    type: integer
+                    description: ID of the created reservation
+                  spot_number:
+                    type: string
+                    description: Allocated spot number
+        '400':
+          description: Bad request - No available spots or invalid data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - User login required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /release_spot/{reservation_id}:
+    post:
+      summary: Release a parking spot
+      description: End a parking session and calculate final cost
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          description: Unique identifier for the reservation
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Spot released successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Success status
+                  message:
+                    type: string
+                    description: Success message with total cost
+                  total_cost:
+                    type: number
+                    format: float
+                    description: Final parking cost
+        '400':
+          description: Bad request - Spot already released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - User login required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/delete_lot/{lot_id}:
+    post:
+      summary: Delete a parking lot (Admin only)
+      description: Delete a parking lot if no spots are occupied
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          description: Unique identifier for the parking lot
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Parking lot deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Success status
+                  message:
+                    type: string
+                    description: Success message
+        '400':
+          description: Bad request - Cannot delete lot with occupied spots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Admin access required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+      required:
+        - error
+
+  securitySchemes:
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Flask session-based authentication
+
+security:
+  - SessionAuth: []
+
+tags:
+  - name: Spots
+    description: Parking spot management operations
+  - name: Reservations
+    description: Reservation management operations
+  - name: Admin
+    description: Administrative operations

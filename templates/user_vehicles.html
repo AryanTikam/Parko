@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}My Vehicles - Parko{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-white mb-4">
+                <i class="fas fa-car"></i> My Vehicles
+            </h2>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-plus"></i> Add New Vehicle</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('user.add_vehicle') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Vehicle
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> My Vehicles</h5>
+                </div>
+                <div class="card-body">
+                    {% if vehicles %}
+                        <div class="row">
+                            {% for vehicle in vehicles %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-car"></i> {{ vehicle.vehicle_number }}
+                                        </h6>
+                                        {% if vehicle.vehicle_type %}
+                                        <p class="card-text text-muted">{{ vehicle.vehicle_type }}</p>
+                                        {% endif %}
+                                        <p class="card-text small text-muted">
+                                            Added: {{ vehicle.created_at.strftime('%d %b %Y') }}
+                                        </p>
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ url_for('user.edit_vehicle', vehicle_id=vehicle.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No vehicles registered</h5>
+                            <p class="text-muted">Add your first vehicle to start booking parking spots.</p>
+                            <a href="{{ url_for('user.add_vehicle') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Add Vehicle
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

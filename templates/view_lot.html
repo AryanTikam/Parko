@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lot.prime_location_name }} - Parko{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4><i class="fas fa-map-marker-alt"></i> {{ lot.prime_location_name }}</h4>
+                            <p class="mb-0">{{ lot.address }} - {{ lot.pin_code }}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <h5 class="text-primary mb-0">₹{{ lot.price_per_hour }}/hour</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Legend -->
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(135deg, #4CAF50, #45a049);"></div>
+                            <span style="color: black;">Available</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: linear-gradient(135deg, #f44336, #d32f2f);"></div>
+                            <span style="color: black;">Occupied</span>
+                        </div>
+                    </div>
+
+                    <!-- Spot Search/Filter Form -->
+                    <form method="get" class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <input type="text" name="search" value="{{ spot_filters.search or '' }}" class="form-control" placeholder="Search by spot number">
+                        </div>
+                        <div class="col-md-4">
+                            <select name="status" class="form-select">
+                                <option value="">Any Status</option>
+                                <option value="A" {% if spot_filters.status == 'A' %}selected{% endif %}>Available</option>
+                                <option value="O" {% if spot_filters.status == 'O' %}selected{% endif %}>Occupied</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100"><i class="fas fa-search"></i> Filter</button>
+                        </div>
+                    </form>
+
+                    <!-- Book Lot Form (First Available Spot) -->
+                    {% set available_spots = spots|selectattr('status', 'equalto', 'A')|list %}
+                    {% if available_spots %}
+                        <form id="lotBookingForm" class="mb-3">
+                            <div class="mb-3">
+                                <label for="vehicleSelect" class="form-label">Select Vehicle</label>
+                                <select class="form-control" id="vehicleSelect" required>
+                                    <option value="">Choose a vehicle...</option>
+                                    {% for vehicle in user_vehicles %}
+                                    <option value="{{ vehicle.id }}">{{ vehicle.vehicle_number }} {% if vehicle.vehicle_type %}({{ vehicle.vehicle_type }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if not user_vehicles %}
+                                <small class="text-muted">No vehicles registered. <a href="{{ url_for('user.vehicles') }}">Add a vehicle</a> first.</small>
+                                {% endif %}
+                            </div>
+                            <button type="button" class="btn btn-success" onclick="bookFirstAvailableSpot({{ lot.id }})" {% if not user_vehicles %}disabled{% endif %}>
+                                <i class="fas fa-car"></i> Book Now (First Available Spot)
+                            </button>
+                        </form>
+                        <div id="bookingResult"></div>
+                    {% else %}
+                        <div class="alert alert-danger">No available spots in this lot.</div>
+                    {% endif %}
+
+                    <hr>
+                    <h6>Spot Status:</h6>
+                    <div class="parking-grid">
+                        {% for spot in spots %}
+                        <div class="parking-spot {{ 'occupied' if spot.status == 'O' else 'available' }}" 
+                             data-spot-id="{{ spot.id }}" 
+                             onclick="showSpotDetails({{ spot.id }})">
+                            <div>
+                                <div style="font-size: 0.8em;">{{ spot.spot_number }}</div>
+                                <div style="font-size: 0.6em;">
+                                    <i class="fas {{ 'fa-car' if spot.status == 'O' else 'fa-check' }}"></i>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Spot Details Modal -->
+<div class="modal fade" id="spotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-parking"></i> Parking Spot Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="spotModalBody">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Details Modal -->
+<div class="modal fade" id="adminDetailsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Detailed Reservation Info</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="adminDetailsModalBody">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentSpotId = null;
+let currentSpotData = null;
+
+function showSpotDetails(spotId) {
+    fetch(`/api/spot/${spotId}`)
+        .then(response => response.json())
+        .then(data => {
+            currentSpotData = data;
+            currentSpotId = spotId;
+            
+            let modalBody = document.getElementById('spotModalBody');
+            
+            if (data.spot.status === 'O') {
+                // Occupied spot
+                let adminControls = '';
+                {% if session.get('is_admin') %}
+                adminControls = `
+                    <div class="mt-3">
+                        <button class="btn btn-info" onclick="showAdminDetails()">
+                            <i class="fas fa-info-circle"></i> Details
+                        </button>
+                    </div>
+                `;
+                {% endif %}
+                
+                modalBody.innerHTML = `
+                    <div class="spot-details">
+                        <h6><i class="fas fa-car text-danger"></i> Spot ${data.spot.number} - Occupied</h6>
+                        <p><strong>Location:</strong> ${data.lot.name}</p>
+                        <p><strong>Rate:</strong> ₹${data.lot.price_per_hour}/hour</p>
+                        ${data.current_reservation ? `
+                            <div class="alert alert-info">
+                                <strong>Current Reservation:</strong><br>
+                                Vehicle: ${data.current_reservation.vehicle_number || 'Unknown'}<br>
+                                User: ${data.current_reservation.user || 'Unknown'}<br>
+                                Since: ${data.current_reservation.start_time}
+                            </div>
+                        ` : ''}
+                        ${adminControls}
+                    </div>
+                `;
+            } else {
+                // Available spot
+                modalBody.innerHTML = `
+                    <div class="spot-details">
+                        <h6><i class="fas fa-check-circle text-success"></i> Spot ${data.spot.number} - Available</h6>
+                        <p><strong>Location:</strong> ${data.lot.name}</p>
+                        <p><strong>Rate:</strong> ₹${data.lot.price_per_hour}/hour</p>
+                        <p><strong>Address:</strong> ${data.lot.address}</p>
+                    </div>
+                `;
+            }
+            
+            new bootstrap.Modal(document.getElementById('spotModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading spot details');
+        });
+}
+
+function showAdminDetails() {
+    bootstrap.Modal.getInstance(document.getElementById('spotModal')).hide();
+    
+    // Get detailed information about the reservation
+    fetch(`/api/reservation-details/${currentSpotId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('adminDetailsModalBody').innerHTML = `
+                <div class="reservation-details">
+                    <div class="mb-3">
+                        <h6><strong>Spot Information</strong></h6>
+                        <p>Spot ID: ${data.spot_id}</p>
+                        <p>Spot Number: ${data.spot_number}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><strong>Customer Information</strong></h6>
+                        <p>Customer ID: ${data.user_id || 'N/A'}</p>
+                        <p>Username: ${data.username || 'Unknown'}</p>
+                        <p>Full Name: ${data.user_full_name || 'Unknown'}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6><strong>Reservation Details</strong></h6>
+                        <p>Vehicle: ${data.vehicle_number || 'Unknown'}</p>
+                        <p>Started: ${data.parking_time}</p>
+                        <p>Cost Rate: ₹${data.cost_per_hour}/hour</p>
+                        <p>Current Cost: ₹${data.current_cost}</p>
+                        <p>Elapsed Time: ${data.elapsed_time}</p>
+                    </div>
+                </div>
+            `;
+            
+            new bootstrap.Modal(document.getElementById('adminDetailsModal')).show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error loading reservation details');
+        });
+}
+
+// New booking logic for first available spot in lot
+function bookFirstAvailableSpot(lotId) {
+    const vehicleSelect = document.getElementById('vehicleSelect');
+    const vehicleId = vehicleSelect.value;
+    const bookBtn = document.querySelector('#lotBookingForm button[type="button"]');
+    if (!vehicleId) {
+        alert('Please select a vehicle');
+        return;
+    }
+    // Disable the button and show loading
+    bookBtn.disabled = true;
+    bookBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Booking...';
+
+    fetch(`/book_lot/${lotId}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({vehicle_id: vehicleId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('bookingResult').innerHTML = 
+                `<div class="alert alert-success">${data.message} (Spot: ${data.spot_number})</div>`;
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            document.getElementById('bookingResult').innerHTML = 
+                `<div class="alert alert-danger">${data.error}</div>`;
+            // Re-enable the button if booking failed
+            bookBtn.disabled = false;
+            bookBtn.innerHTML = '<i class="fas fa-car"></i> Book Now (First Available Spot)';
+        }
+    })
+    .catch(() => {
+        document.getElementById('bookingResult').innerHTML = 
+            `<div class="alert alert-danger">An error occurred while booking.</div>`;
+        bookBtn.disabled = false;
+        bookBtn.innerHTML = '<i class="fas fa-car"></i> Book Now (First Available Spot)';
+    });
+}
+</script>
+{% endblock %}

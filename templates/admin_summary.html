@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Summary - Parko{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-white mb-4"><i class="fas fa-chart-bar"></i> Summary Report</h2>
+
+    <div class="d-flex justify-content-end mb-3">
+        <a href="{{ url_for('admin.export_summary') }}" class="btn btn-success">
+            <i class="fas fa-download"></i> Download CSV
+        </a>
+    </div>
+
+    <!-- Interactive Charts -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Parking Lot Occupancy</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="spotsChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Revenue Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="revenueChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% for lot in lot_performance %}
+        <div class="col-md-4 mb-3">
+            <div class="stat-card">
+                <h5>{{ lot.prime_location_name }}</h5>
+                <p><strong>Bookings:</strong> {{ lot.bookings }}</p>
+                <p><strong>Revenue:</strong> ₹{{ lot.revenue }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5>Monthly Revenue</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Revenue (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in monthly_revenue %}
+                    <tr>
+                        <td>{{ row.month }}</td>
+                        <td>{{ row.revenue }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Chart.js library -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Data for charts
+        const lotLabels = [{% for lot in lot_data %}'{{ lot.name }}',{% endfor %}];
+        const occupiedSpots = [{% for lot in lot_data %}{{ lot.occupied_spots }},{% endfor %}];
+        const totalSpots = [{% for lot in lot_data %}{{ lot.total_spots }},{% endfor %}];
+        const revenueLabels = [{% for lot in lot_performance %}'{{ lot.prime_location_name }}',{% endfor %}];
+        const lotRevenues = [{% for lot in lot_performance %}{{ lot.revenue or 0 }},{% endfor %}];
+        
+        // Bar chart for occupied spots
+        const spotsCtx = document.getElementById('spotsChart').getContext('2d');
+        new Chart(spotsCtx, {
+            type: 'bar',
+            data: {
+                labels: lotLabels,
+                datasets: [
+                    {
+                        label: 'Occupied Spots',
+                        data: occupiedSpots,
+                        backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                        borderColor: 'rgb(255, 99, 132)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Total Spots',
+                        data: totalSpots,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgb(54, 162, 235)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Spots'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Pie chart for revenue distribution
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'pie',
+            data: {
+                labels: revenueLabels,
+                datasets: [{
+                    data: lotRevenues,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)',
+                        'rgba(255, 159, 64, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ₹' + context.raw;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section">
+    <div class="container">
+        <h1 class="hero-title">
+            <i class="fas fa-car"></i> Welcome to Parko
+        </h1>
+        <p class="hero-subtitle">
+            Smart parking solution for modern cities. Find, book, and manage your parking spots effortlessly.
+        </p>
+        <div class="mt-4">
+            {% if not session.user_id %}
+                <a href="{{ url_for('user.login') }}" class="btn btn-primary btn-lg me-3">
+                    <i class="fas fa-sign-in-alt"></i> Get Started
+                </a>
+                <a href="{{ url_for('user.register') }}" class="btn btn-outline-light btn-lg">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </a>
+            {% else %}
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-tachometer-alt"></i> Admin Dashboard
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('user.dashboard') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-user"></i> My Dashboard
+                    </a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-map-marker-alt fa-3x text-primary mb-3"></i>
+                    <h5 class="card-title">Find Parking</h5>
+                    <p class="card-text">Discover available parking spots near your destination with real-time updates.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-mobile-alt fa-3x text-success mb-3"></i>
+                    <h5 class="card-title">Book Instantly</h5>
+                    <p class="card-text">Reserve your parking spot with just a few clicks and secure payment.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                    <h5 class="card-title">Save Time</h5>
+                    <p class="card-text">No more circling around looking for parking. Get straight to your destination.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

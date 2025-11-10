@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Parko{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="text-white mb-4">
+                <i class="fas fa-user"></i> Welcome, {{ session.username }}!
+            </h2>
+        </div>
+    </div>
+
+    <!-- Current Reservations -->
+    {% if reservations %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-clock"></i> Current Reservations</h5>
+                </div>
+                <div class="card-body">
+                    {% for reservation in reservations %}
+                    <div class="spot-details">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h6><i class="fas fa-map-marker-alt"></i> {{ reservation.spot.lot.prime_location_name }}</h6>
+                                <p class="mb-1"><strong>Spot:</strong> {{ reservation.spot.spot_number }}</p>
+                                <p class="mb-1"><strong>Vehicle:</strong> {{ reservation.vehicle.vehicle_number if reservation.vehicle else 'Unknown' }}</p>
+                                <p class="mb-1"><strong>Since:</strong> {{ reservation.parking_timestamp|ist('%Y-%m-%d %H:%M') }}</p>
+                                <p class="mb-0"><strong>Rate:</strong> ₹{{ reservation.parking_cost }}/hour</p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-warning" onclick="releaseSpot({{ reservation.id }})">
+                                    <i class="fas fa-sign-out-alt"></i> Release Spot
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Available Parking Lots -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-parking"></i> Available Parking Lots</h5>
+                    <form method="GET" class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <input type="text" name="search" value="{{ filters.search or '' }}" class="form-control" placeholder="Search by name, address, pin...">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" name="min_price" value="{{ filters.min_price or '' }}" class="form-control" placeholder="Min Price">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="number" name="max_price" value="{{ filters.max_price or '' }}" class="form-control" placeholder="Max Price">
+                        </div>
+                        <div class="col-md-3">
+                            <select name="availability" class="form-select">
+                                <option value="">Any Availability</option>
+                                <option value="available" {% if filters.availability == 'available' %}selected{% endif %}>Available</option>
+                                <option value="full" {% if filters.availability == 'full' %}selected{% endif %}>Full</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100"><i class="fas fa-search"></i> Filter</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for lot in lots %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="dashboard-card">
+                                <h6><i class="fas fa-map-marker-alt"></i> {{ lot.prime_location_name }}</h6>
+                                <p class="mb-2"><strong>Address:</strong> {{ lot.address }}</p>
+                                <p class="mb-2"><strong>Rate:</strong> ₹{{ lot.price_per_hour }}/hour</p>
+                                <p class="mb-3"><strong>Total Spots:</strong> {{ lot.spots|length }}</p>
+                                <a href="{{ url_for('parking.view_lot', lot_id=lot.id) }}" class="btn btn-primary">
+                                    <i class="fas fa-eye"></i> View Spots
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function releaseSpot(reservationId) {
+    if (confirm('Are you sure you want to release this parking spot?')) {
+        fetch("/release_spot/" + reservationId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while releasing the spot.');
+        });
+    }
+}
+</script>
+{% endblock %}
