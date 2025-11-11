@@ -15,7 +15,7 @@ class User(db.Model):
     address = db.Column(db.Text)
     pincode = db.Column(db.String(10))
     is_admin = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(utc))
     reservations = db.relationship('Reservation', backref='user', lazy=True)
     vehicles = db.relationship('Vehicle', backref='owner', lazy=True)
 
@@ -26,7 +26,7 @@ class ParkingLot(db.Model):
     pin_code = db.Column(db.String(10), nullable=False)
     price_per_hour = db.Column(db.Float, nullable=False)
     maximum_number_of_spots = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(utc))
     spots = db.relationship('ParkingSpot', backref='lot', lazy=True, cascade='all, delete-orphan')
 
 class ParkingSpot(db.Model):
@@ -41,7 +41,7 @@ class Vehicle(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     vehicle_number = db.Column(db.String(20), unique=True, nullable=False)
     vehicle_type = db.Column(db.String(50))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(utc))
     reservations = db.relationship('Reservation', backref='vehicle', lazy=True)
 
 class Reservation(db.Model):
@@ -49,7 +49,7 @@ class Reservation(db.Model):
     spot_id = db.Column(db.Integer, db.ForeignKey('parking_spot.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicle.id'), nullable=True)
-    parking_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    parking_timestamp = db.Column(db.DateTime, default=lambda: datetime.now(utc))
     leaving_timestamp = db.Column(db.DateTime)
     parking_cost = db.Column(db.Float)
     payment_status = db.Column(db.String(20), default='pending')
